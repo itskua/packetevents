@@ -158,15 +158,17 @@ public class WrapperPlayServerUpdateAttributes extends PacketWrapper<WrapperPlay
         } else {
             writeInt(properties.size());
         }
-        for (Property property : properties) {
+        for (int i = 0; i < properties.size(); i++) {
+            Property property = properties.get(i);
+            Attribute attribute = requireAttributeForWrite(property, i, this.serverVersion);
             if (this.serverVersion.isNewerThanOrEquals(ServerVersion.V_1_20_5)) {
-                this.writeVarInt(property.getAttribute().getId(this.serverVersion.toClientVersion()));
+                this.writeVarInt(attribute.getId(this.serverVersion.toClientVersion()));
             } else if (this.serverVersion.isNewerThanOrEquals(ServerVersion.V_1_16)) {
-                this.writeIdentifier(property.getAttribute().getName(this.serverVersion.toClientVersion()));
+                this.writeIdentifier(attribute.getName(this.serverVersion.toClientVersion()));
             } else {
                 // just write the "modern" name if the legacy name can't be found
-                String str = PRE_1_16_ATTRIBUTES_RMAP.get(property.getAttribute());
-                this.writeString(str != null ? str : property.getAttribute().getName().toString());
+                String str = PRE_1_16_ATTRIBUTES_RMAP.get(attribute);
+                this.writeString(str != null ? str : attribute.getName().toString());
             }
 
             writeDouble(property.value);
@@ -185,6 +187,15 @@ public class WrapperPlayServerUpdateAttributes extends PacketWrapper<WrapperPlay
                 writeByte(modifier.operation.ordinal());
             }
         }
+    }
+
+    static Attribute requireAttributeForWrite(Property property, int propertyIndex, ServerVersion serverVersion) {
+        Attribute attribute = property.getAttribute();
+        if (attribute == null) {
+            throw new IllegalStateException("Cannot write UPDATE_ATTRIBUTES property at index " + propertyIndex
+                    + " because attribute is null (version: " + serverVersion.name() + ")");
+        }
+        return attribute;
     }
 
     @Override
